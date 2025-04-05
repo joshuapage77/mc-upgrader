@@ -1,0 +1,18 @@
+[
+   {
+      "slug": "fabric-api",
+      "optional": false
+   },
+   {
+      "slug": "worldedit-cui",
+      "optional": true
+   },
+   {
+      "slug": "sodium",
+      "optional": false
+   },
+   {
+      "slug": "iris",
+      "optional": false
+   }
+]

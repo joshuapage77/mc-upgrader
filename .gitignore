@@ -1,0 +1,13 @@
+# Java build output
+/build/
+/.gradle/
+/.vscode/
+/*.log
+
+# Ignore all JARs
+*.jar
+
+# Sandbox artifacts
+/sandbox/*
+!/sandbox/config/
+!/sandbox/config/mods.json
