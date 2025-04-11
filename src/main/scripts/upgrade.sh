@@ -17,15 +17,4 @@ fi
 echo "[INFO] Using Java: $JAVA_PATH"
 "$JAVA_PATH" -version
 
-UPGRADE_CLASS="java/Upgrader.class"
-
-if [[ ! -f "$UPGRADE_CLASS" ]]; then
-   echo "[INFO] Compiling Java sources..."
-   "$JAVA_PATH"c -d java java/*.java || {
-      echo "[ERROR] Compilation failed"
-      exit 1
-   }
-fi
-
-#"$JAVA_PATH" -cp java Upgrader
-"$JAVA_PATH" -cp java ModCompatibilityResolver
+"$JAVA_PATH" -jar mc-upgrader.jar "$@"

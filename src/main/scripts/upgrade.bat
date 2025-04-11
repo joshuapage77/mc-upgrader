@@ -29,4 +29,4 @@ if not exist "%UPGRADE_CLASS%" (
    )
 )
 
-"%JAVA_PATH%" -cp java Upgrader
+"%JAVA_PATH%" -jar mc-upgrader.jar

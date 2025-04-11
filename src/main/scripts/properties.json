@@ -1,0 +1,9 @@
+{
+   "minecraft": "~/.minecraft",
+   "games": [
+      {
+         "name": "SandboxGame",
+         "path": "../tyberian25565"
+      }
+   ]
+}

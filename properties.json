@@ -1,0 +1,9 @@
+{
+   "minecraft": "./sandbox/minecraft",
+   "games": [
+      {
+         "name": "SandboxGame",
+         "path": "./sandbox/gameDir"
+      }
+   ]
+}
