@@ -3,44 +3,12 @@
 **mc-client-upgrader** is a cross-platform tool for automating the setup and maintenance of Minecraft client installations, focused on managing version-locked mods and ensuring compatibility across custom game directories.
 
 ---
-
-## ✨ Features
-
-- ✅ Resolves compatible Minecraft versions based on required and optional mods
-- ✅ Supports Fabric-based mods via [Modrinth API](https://docs.modrinth.com/)
-- ✅ Automatically locates and uses Minecraft’s bundled Java runtime
-- ✅ Supports Linux, macOS, and Windows with portable shell/batch scripts
-- ✅ Isolated configuration via `properties.json` and per-client `mods.json`
-- ✅ Automates the process of upgrading mods for specific game directories
-- ✅ Sandbox-friendly for testing mod upgrades and configurations
-- ✅ No external dependencies required on the target machine
-
----
-
-## 🧱 Project Structure
-
-```text
-mc-client-upgrader/
-├── build.gradle                  # Gradle project definition
-├── settings.gradle               # Gradle settings
-├── sandbox/                      # Dev sandbox for testing upgrades
-│   └── config/
-│       └── mods.json             # List of mods and optional flags
-├── scripts/                      # Bootstrap + upgrade scripts
-│   ├── find_latest_java.[sh|bat]
-│   └── upgrade.[sh|bat]
-├── src/main/java/                # Java sources
-│   └── ModCompatibilityResolver.java
-└── build/mcc-upgrader/           # Build output (distributable)
-    ├── mc-upgrader.jar
-    ├── properties.json
-    ├── upgrade.sh / upgrade.bat
-    └── find_latest_java.sh / .bat
-```
-
----
-
 ## 🔧 Core Functions
+Upgrades or downgrades:
+* fabric loader version
+* mod versions
+* shader versions
+Determines (based on mod optionality and command line parameters) the highest version supported by required mods
 
 ### 1. Mod Compatibility Resolution
 Reads a list of mods (`mods.json`) with required/optional flags and determines:
@@ -58,15 +26,74 @@ Automates the upgrade process by fetching compatible mod versions and updating c
 ## 🚀 Getting Started
 
 ```bash
-./gradlew build     # Builds the project
+mvn clean package     # Builds the project
 ```
+Distributable artifact will be found in: `target/mc-upgrader.zip`
+This can be used for global minecraft upgrading or specific game upgrading. The ladder is recommended.
 
-Distributable artifacts will be found in:
-```
-build/mcc-upgrader/
-```
+## Install
 
-Copy `properties.json.example` to `properties.json` and edit to point to your game directory root after deployment.
+#### Recommended setup
+```
+minecraft
+└── games
+    ├── mc-updater
+    └── <game folder>
+        └── conf
+            └── mods.json
+```
+* create a folder called games under the minecraft folder (whatever that is on your system)
+* unzip mc-updater.zip so it creates a folder under games
+* create a folder for your game
+  * you can copy things you want to reuse from the global minecraft
+    * config (folder)
+    * options.txt
+
+Configure game instance:
+* create a mods.json in the games `config` folder with this structure:
+```
+[
+  {
+    "slug": "MOD NAME",
+    "loader": "MOD LOADER",
+    "optional": boolean,
+    "useSnapshot": boolean,
+    "type": "[mod|shader]",
+    "releaseArtifacts": "[modrinth|enginehub]",
+    "snapshotArtifacts": "[modrinth|enginehub]"
+  },
+  ...
+]
+```
+example:
+```json
+[
+   {
+      "slug": "fabric-api",
+      "loader": "fabric",
+      "type": "mod",
+      "releaseArtifacts": "modrinth",
+      "snapshotArtifacts": "modrinth"
+   },
+   {
+      "slug": "worldedit-cui",
+      "loader": "fabric",
+      "optional": true,
+      "useSnapshot": true,
+      "type": "mod",
+      "releaseArtifacts": "modrinth",
+      "snapshotArtifacts": "enginehub"
+   }
+]
+```
+Configure mc-updater:
+* copy `properties.json.SAMPLE` to `properties.json`
+* minecraft is the path to minecraft
+  * can be absolute, relative, or use ~ for mac/unix
+  * sample assumes the recommended structure
+* Multiple games may be managed, each should have an object defined in the games array
+* name - only used as an identifier if specifying a specific game to upgrade
+* path - path to game folder
 
 ---
 

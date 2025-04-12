@@ -68,7 +68,7 @@ public class Upgrader {
 
          log.info("Associated Install current version: {}, minecraft game version: {}", fabricGameVersion, minecraftGameVersion);
          List<String> searchVersions = ModrinthArtifactProvider.getReleaseMinecraftVersions(gameRangeStart, true, opts.rangeEnd, true);
-
+         log.debug("Minecraft release versions in range: {}", String.join(", ", searchVersions));
          List<Mod> mods = Config.getModConfigs(game.getPath()).stream()
                .map(mod -> new Mod(mod, searchVersions))
                .toList();
