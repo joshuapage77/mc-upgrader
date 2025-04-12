@@ -10,7 +10,12 @@
 # Ignore all JARs
 *.jar
 
-# Sandbox artifacts
-/sandbox/*
-!/sandbox/config/
-!/sandbox/config/mods.json
+# Ignore everything under sandbox
+/sandbox/**
+
+# Allow only the two specific files
+!/sandbox/gameDir/config/
+!/sandbox/gameDir/config/mods.json
+
+!/sandbox/minecraft/
+!/sandbox/minecraft/launcher_profiles.json
