@@ -48,12 +48,6 @@ public class Config {
    }
    public String getMinecraft() { return minecraft; }
 
-   public static class ModConfig {
-      public String slug;
-      public boolean optional;
-      public String type;
-   }
-
    public static class GameConfig {
       public String name;
       private String path;

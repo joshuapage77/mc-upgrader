@@ -5,6 +5,7 @@
 /.idea/
 /target/
 /*.log
+/devnotes.md
 
 # Ignore all JARs
 *.jar

@@ -3,7 +3,7 @@ package com.mordore;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mordore.config.Config;
-import com.mordore.config.Config.ModConfig;
+import com.mordore.config.ModConfig;
 import com.mordore.pojo.ModVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,7 +70,7 @@ public class ModCompatibilityResolver {
 
    private static Map<String, ModVersion> getModVersionsForGameVersion (List<ModConfig> mods, String gameVersion, Map<String, Map<String, ModVersion>> modVersionMap) {
       Map<String, ModVersion> modVersion = new HashMap<>();
-      for (Config.ModConfig mod : mods) {
+      for (ModConfig mod : mods) {
          modVersion.put(mod.slug, modVersionMap.get(mod.slug).get(gameVersion));
       }
       return modVersion;

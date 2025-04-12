@@ -2,6 +2,7 @@
 package com.mordore;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.Comparator;
@@ -12,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class ModCompatibilityResolverTest {
 
    // Example placeholder test for getNewerVersions - will hit API
+   @Disabled("Integration test")
    @Test
    public void testGetNewerGameVersions_liveCall() throws Exception {
       List<String> newer = ModCompatibilityResolver.getNewerGameVersions("1.19");

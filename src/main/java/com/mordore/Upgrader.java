@@ -1,8 +1,10 @@
 package com.mordore;
 
 import com.mordore.config.Config;
+import com.mordore.mods.Mod;
+import com.mordore.mods.ModrinthArtifactProvider;
 import com.mordore.pojo.ModVersion;
-import com.mordore.pojo.VersionResult;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -16,11 +18,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.*;
-import java.util.List;
-import java.util.Map;
-import java.util.Scanner;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import com.mordore.config.ModConfig;
 
 public class Upgrader {
    private static final Logger log = LoggerFactory.getLogger(Upgrader.class);
@@ -42,8 +43,16 @@ public class Upgrader {
       }
 
       if (opts.verbose) {
-         System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "debug");
+         ch.qos.logback.classic.Logger root =
+               (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+         root.setLevel(ch.qos.logback.classic.Level.DEBUG);
+
          log.debug("Verbose mode enabled");
+      }
+
+      if (opts.specificVersion != null) {
+         opts.rangeStart = opts.specificVersion;
+         opts.rangeEnd = opts.specificVersion;
       }
 
       Config config = Config.getInstance();
@@ -55,35 +64,50 @@ public class Upgrader {
          String fabricGameVersion = LauncherProfiles.findCurrentVersion(config.getMinecraft(), game.getPath());
          String minecraftGameVersion = extractMinecraftVersion(fabricGameVersion);
 
-         log.info("Associated Install current version: {}, minecraft game version: {}", fabricGameVersion, minecraftGameVersion);
-         List<String> searchVersions;
-         if (opts.specificVersion != null && !opts.specificVersion.isEmpty()) {
-            searchVersions = List.of(opts.specificVersion);
-         } else {
-            searchVersions = ModCompatibilityResolver.getNewerGameVersions(minecraftGameVersion);
-         }
-         List<Config.ModConfig> mods = Config.getModConfigs(game.getPath());
-         VersionResult versionResult = ModCompatibilityResolver.runVersionCheck(mods, game.getPath(), searchVersions);
-         log.debug("versionResult - required: {}  all {}", versionResult.latestRequired(), versionResult.latestAll());
-         String chosenVersion = opts.requiredOnly ? versionResult.latestRequired() : versionResult.latestAll();
-         log.info("Chosen mincraft version: {}", chosenVersion);
-         String versionChangeString = "Upgrade";
-         if (chosenVersion.compareTo(minecraftGameVersion) < 0) {
-            versionChangeString = "DOWNGRADE";
-            log.warn("NOTE: Downgrades minecraft from {} to {}", minecraftGameVersion, chosenVersion);
-         }
-         Map<String, ModVersion> modVersions = versionResult.versionToMod().get(chosenVersion);
+         String gameRangeStart = (opts.rangeStart != null) ? opts.rangeStart : minecraftGameVersion;
 
-         for (String slug : modVersions.keySet()) {
-            ModVersion version = modVersions.get(slug);
+         log.info("Associated Install current version: {}, minecraft game version: {}", fabricGameVersion, minecraftGameVersion);
+         List<String> searchVersions = ModrinthArtifactProvider.getReleaseMinecraftVersions(gameRangeStart, true, opts.rangeEnd, true);
+
+         List<Mod> mods = Config.getModConfigs(game.getPath()).stream()
+               .map(mod -> new Mod(mod, searchVersions))
+               .toList();
+
+         List<String> validVersions = resolveVersions(mods, searchVersions, !opts.requiredOnly);
+
+         if (validVersions.isEmpty()) {
+            log.error("Targed minecraft versions [{}, {}] not available for all{} mods", gameRangeStart, opts.rangeEnd == null ? "latest" : opts.rangeEnd, opts.requiredOnly ? " required" : "");
+            log.error("Aborting");
+            continue;
+         }
+
+         String selectedVersion = validVersions.getFirst();
+         if (opts.specificVersion != null) {
+            if (!validVersions.contains(opts.specificVersion)) {
+               log.error("Requested version {} is not available for all{} mods", opts.specificVersion, opts.requiredOnly ? " required" : "");
+               log.error("Aborting");
+               continue;
+            }
+            selectedVersion = opts.specificVersion;
+         }
+         log.debug("Available Versions: {}", String.join(", ", validVersions));
+         log.info("Selected Version: {}", selectedVersion);
+         for (Mod mod : mods) {
+            ModVersion version = mod.getModVersion(selectedVersion);
             log.info("\tMod: {}\tVersion: {}\tUrl: {}",
-                  String.format("%-15s", slug),
+                  String.format("%-20s", mod.getModConfig().slug),
                   String.format("%-25s", (version != null) ? version.getVersionNumber() : "Version Unavailable"),
                   (version != null) ? version.getUrl() : "");
          }
 
+         String versionChangeString = "Upgrade";
+         if (selectedVersion.compareTo(minecraftGameVersion) < 0) {
+            versionChangeString = "DOWNGRADE";
+            log.warn("NOTE: Downgrades minecraft from {} to {}", minecraftGameVersion, selectedVersion);
+         }
+
          if (opts.dryRun) {
-            log.info("[Dry Run] Would {} to: {}", versionChangeString, chosenVersion);
+            log.info("[Dry Run] Would {} to: {}", versionChangeString, selectedVersion);
             return;
          }
          System.out.print("Proceed with " + versionChangeString + "? [y/N]: ");
@@ -93,14 +117,44 @@ public class Upgrader {
             System.out.println("Aborting");
             continue;
          }
-         log.info("{}ing {} to {}", versionChangeString.substring(0, versionChangeString.length() - 1), game.name, chosenVersion);
-         String newFabricInstallId = upgradeFabricVersion(config.getMinecraft(), chosenVersion);
+         log.info("{}ing {} to {}", versionChangeString.substring(0, versionChangeString.length() - 1), game.name, selectedVersion);
+         String newFabricInstallId = upgradeFabricVersion(config.getMinecraft(), selectedVersion);
          LauncherProfiles.updateVersion(config.getMinecraft(), game.getPath(), newFabricInstallId);
 
-         updateMods(mods, modVersions, game.getPath());
+         updateMods(mods, selectedVersion, game.getPath());
          log.info("All changes complete");
       }
    }
+
+   // logic - we only count required. But the number needed to consider a version depends on whether all mods need a version
+   // or not (allRequired)
+   private static List<String> resolveVersions(List<Mod> mods, List<String> searchVersions, boolean allRequired) {
+      long requiredCount = mods.stream()
+            .filter(mod -> allRequired || !mod.getModConfig().optional)
+            .count();
+      log.debug("Count of required mods for version support: {}", requiredCount);
+      Map<String, Integer> versionCount = new HashMap<>();
+      for (Mod mod : mods) {
+         for (String version : mod.getMinecraftVersions()) {
+            if (!mod.getModConfig().optional) {
+               Integer count = (versionCount.containsKey(version)) ? versionCount.get(version) : Integer.valueOf(0);
+               count++;
+               versionCount.put(version, count);
+            }
+         }
+      }
+      for (String version : versionCount.keySet()) {
+         log.debug("  Mods supporting version [{}]: {}", version, versionCount.get(version));
+      }
+      List<String> validVersions = versionCount.entrySet().stream()
+            .filter(e -> e.getValue() == requiredCount)
+            .map(Map.Entry::getKey)
+            .collect(Collectors.toList());;
+      log.debug("Versions with required support: {}", String.join(", ", validVersions));
+      validVersions.sort(Comparator.reverseOrder());
+      return validVersions;
+   }
+
    public static String extractMinecraftVersion(String fabricVersionId) {
       int lastDash = fabricVersionId.lastIndexOf('-');
       if (lastDash == -1 || lastDash == fabricVersionId.length() - 1) {
@@ -165,7 +219,7 @@ public class Upgrader {
       }
    }
 
-   public static void updateMods(List<Config.ModConfig> mods, Map<String, ModVersion> modVersions, String gamePath) {
+   public static void updateMods(List<Mod> mods, String selectedVersion, String gamePath) {
       Path modsDir = Paths.get(gamePath, "mods");
       if (!Files.exists(modsDir)) {
          try {
@@ -184,16 +238,14 @@ public class Upgrader {
          }
       }
 
-      Map<String, Config.ModConfig> modMap = mods.stream()
-            .collect(Collectors.toMap(mod -> mod.slug, mod -> mod));
-
-      for (String slug : modVersions.keySet()) {
-         ModVersion version = modVersions.get(slug);
+      for (Mod mod : mods) {
+         ModVersion version = mod.getModVersion(selectedVersion);
+         String modName = mod.getModConfig().slug;
 
          Path destDir;
          String extension;
 
-         if ("shader".equals(modMap.get(slug).type)) {
+         if ("shader".equals(mod.getModConfig().type)) {
             destDir = shaderDir;
             extension = ".zip";
          } else {
@@ -202,7 +254,7 @@ public class Upgrader {
          }
 
          try (Stream<Path> files = Files.list(destDir)) {
-            files.filter(p -> p.getFileName().toString().startsWith(slug) && p.getFileName().toString().endsWith(extension))
+            files.filter(p -> p.getFileName().toString().startsWith(modName) && p.getFileName().toString().endsWith(extension))
                   .forEach(p -> {
                      try {
                         Files.deleteIfExists(p);
@@ -217,10 +269,10 @@ public class Upgrader {
 
          // Download new mod jar
          try (InputStream in = URI.create(version.getUrl()).toURL().openStream()) {
-            Path targetFile = destDir.resolve(slug + "-" + version.getVersionNumber() + extension);
+            Path targetFile = destDir.resolve(modName + "-" + version.getVersionNumber() + extension);
             Files.copy(in, targetFile, StandardCopyOption.REPLACE_EXISTING);
          } catch (IOException e) {
-            throw new RuntimeException("Failed to download mod: " + slug, e);
+            throw new RuntimeException("Failed to download mod: " + modName, e);
          }
       }
    }

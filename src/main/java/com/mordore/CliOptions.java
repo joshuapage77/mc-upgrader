@@ -16,8 +16,14 @@ public class CliOptions {
    @Option(names = {"-r", "--required-only"}, description = "Use required-only mods to determine upgrade version")
    public boolean requiredOnly;
 
-   @Option(names = {"-s", "--specific-version"}, description = "Force upgrade/downgrade to specific Minecraft version")
+   @Option(names = {"-s", "--specific-version"}, description = "Force upgrade/downgrade to specific Minecraft version. Overrides range")
    public String specificVersion;
+
+   @Option(names = {"--range-start"}, description = "Force upgrade/downgrade to specific Minecraft version range")
+   public String rangeStart;
+
+   @Option(names = {"--range-end"}, description = "Force upgrade/downgrade to specific Minecraft version range")
+   public String rangeEnd;
 
    @Parameters(arity = "0..1", description = "Optional game name to upgrade (default: all)")
    public String game;
