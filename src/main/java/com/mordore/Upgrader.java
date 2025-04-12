@@ -126,7 +126,7 @@ public class Upgrader {
       }
    }
 
-   // logic - we only count required. But the number needed to consider a version depends on whether all mods need a version
+   // logic - we only count required unless all are required. The number needed to consider a version depends on whether all mods need a version
    // or not (allRequired)
    private static List<String> resolveVersions(List<Mod> mods, List<String> searchVersions, boolean allRequired) {
       long requiredCount = mods.stream()
@@ -136,13 +136,14 @@ public class Upgrader {
       Map<String, Integer> versionCount = new HashMap<>();
       for (Mod mod : mods) {
          for (String version : mod.getMinecraftVersions()) {
-            if (!mod.getModConfig().optional) {
+            if (allRequired || !mod.getModConfig().optional) {
                Integer count = (versionCount.containsKey(version)) ? versionCount.get(version) : Integer.valueOf(0);
                count++;
                versionCount.put(version, count);
             }
          }
       }
+
       for (String version : versionCount.keySet()) {
          log.debug("  Mods supporting version [{}]: {}", version, versionCount.get(version));
       }

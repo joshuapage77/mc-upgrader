@@ -1,6 +1,5 @@
 package com.mordore.mods;
 
-import com.mordore.ModCompatibilityResolver;
 import com.mordore.pojo.ModVersion;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -22,7 +21,7 @@ public class EnginehubArtifactProvider extends ModArtifactProvider {
       modMapper.put("worldedit-cui", "worldeditcui");
    }
    private static final String BASE_URL = "https://builds.enginehub.org";
-   private static final Logger log = LoggerFactory.getLogger(ModCompatibilityResolver.class);
+   private static final Logger log = LoggerFactory.getLogger(EnginehubArtifactProvider.class);
 
    public EnginehubArtifactProvider(String loader) {
       super(loader);
