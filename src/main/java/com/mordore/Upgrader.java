@@ -187,9 +187,9 @@ public class Upgrader {
                Files.copy(in, installerJar, StandardCopyOption.REPLACE_EXISTING);
             }
             // Backup launcher_profiles - it gets updated by fabric installer
-            Path backupPath = LauncherProfiles.backup();
+            Path backupPath = LauncherProfiles.backup(minecraftDir);
             FabricInstaller.installFabric(installerJar.toString(), minecraftDir, mcVersion, loaderVersion);
-            LauncherProfiles.restore(backupPath);
+            LauncherProfiles.restore(backupPath, minecraftDir);
             Files.deleteIfExists(installerJar);
          }
          return versionFolderName;

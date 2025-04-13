@@ -109,16 +109,16 @@
                   <phase>package</phase>
                   <configuration>
                      <target>
-                        <mkdir dir="target/mc-updater"/>
-                        <copy file="target/mc-upgrader.jar" tofile="target/mc-updater/mc-upgrader.jar"/>
-                        <copy todir="target/mc-updater">
+                        <mkdir dir="target/mc-upgrader"/>
+                        <copy file="target/mc-upgrader.jar" tofile="target/mc-upgrader/mc-upgrader.jar"/>
+                        <copy todir="target/mc-upgrader">
                            <fileset dir="src/main/scripts"/>
                         </copy>
 
                         <chmod perm="755">
-                           <fileset dir="target/mc-updater" includes="**/*.sh"/>
+                           <fileset dir="target/mc-upgrader" includes="**/*.sh"/>
                         </chmod>
-                        <zip destfile="target/mc-updater.zip" basedir="target/mc-updater"/>
+                        <zip destfile="target/mc-upgrader.zip" basedir="target/mc-upgrader"/>
                      </target>
                   </configuration>
                   <goals>
