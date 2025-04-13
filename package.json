@@ -1,0 +1,10 @@
+{
+  "name": "tyberian-installer",
+  "version": "1.0.0",
+  "jdeploy": {
+    "jar": "target/your-jar-name.jar",
+    "mainClass": "com.mordore.install.InstallerMain",
+    "arguments": ["tyberian25565"],
+    "nativeBundles": true
+  }
+}
