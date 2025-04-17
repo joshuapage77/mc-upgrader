@@ -1,14 +1,18 @@
 package com.mordore.install;
 
 import com.mordore.LauncherProfiles;
+import com.mordore.Utils;
 
 import javax.swing.*;
 import java.awt.*;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.URISyntaxException;
 import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.util.Locale;
+import java.net.URL;
+import java.net.URI;
 
 public class InstallerMain {
 
@@ -45,7 +49,7 @@ public class InstallerMain {
       labelsPanel.add(minecraftPathLabel);
 
       ImageIcon rawIcon = new ImageIcon(InstallerMain.class.getResource("/icon.png"));
-      Image scaledImage = rawIcon.getImage().getScaledInstance(128, 128, Image.SCALE_SMOOTH);
+      Image scaledImage = rawIcon.getImage().getScaledInstance(140, 140, Image.SCALE_SMOOTH);
       JLabel iconLabel = new JLabel(new ImageIcon(scaledImage));
       JPanel topPanel = new JPanel(new BorderLayout());
       topPanel.add(labelsPanel, BorderLayout.CENTER);
@@ -62,10 +66,19 @@ public class InstallerMain {
       installButton = new JButton("Install");
       cancelButton = new JButton("Cancel");
 
+      final Path mcPath = Utils.findMinecraftDirectory();
       installButton.addActionListener(e -> {
          installButton.setEnabled(false);
          cancelButton.setEnabled(false);
-         new Thread(() -> runInstall(args)).start();
+         new Thread(() -> {
+            try {
+               runInstall(mcPath);
+            } catch (IOException | URISyntaxException ex) {
+               throw new RuntimeException(ex);
+            } finally {
+               showExitButton();
+            }
+         }).start();
       });
 
       cancelButton.addActionListener(e -> System.exit(0));
@@ -81,10 +94,17 @@ public class InstallerMain {
 
       frame.setContentPane(contentPanel);
       frame.setLocationRelativeTo(null);
-      Path mcPath = locateMinecraft();
-      if (mcPath != null && Files.isDirectory(mcPath)) {
+
+      if (mcPath == null) {
+         log("ERROR: Unable to find minecraft directory");
+         showExitButton();
+      } else {
          updateMinecraftPathLabel(mcPath.toString());
+         if (Utils.pathContainsSegment(mcPath, "sandbox")) {
+            log("Using Sandbox minecraft");
+         }
       }
+
       frame.setVisible(true);
    }
 
@@ -99,22 +119,10 @@ public class InstallerMain {
       });
    }
 
-   private static void runInstall(String[] args) {
-      if (args.length < 1) {
-         log("Usage: java InstallerMain <gameFolder>");
-         return;
-      }
+   private static void runInstall(Path mcPath) throws IOException, URISyntaxException {
+      String gameFolder = "tyberian25565";
 
-      String gameFolder = args[0];
-      Path mcPath = locateMinecraft();
-      if (mcPath == null || !Files.isDirectory(mcPath)) {
-         log("Error: Could not locate Minecraft directory.");
-         return;
-      }
-      updateMinecraftPathLabel(mcPath.toString());
-
-      Path installerDir = Paths.get("").toAbsolutePath();
-      Path gamesSrc = installerDir.resolve("games");
+      Path gamesSrc = extractResourceDirectory("/installer/games");
       Path gameSrc = gamesSrc.resolve(gameFolder);
       if (!Files.exists(gameSrc) || !Files.isDirectory(gameSrc)) {
          log("Error: Source folder " + gameSrc + " not found.");
@@ -145,6 +153,7 @@ public class InstallerMain {
          } else {
             log("Warning: config directory not found, skipping.");
          }
+
          log("Backing up launcher_profiles.json");
          LauncherProfiles.backup(mcPath);
          log("Adding new installation profile to launcher_profiles.json");
@@ -156,8 +165,8 @@ public class InstallerMain {
          log("    " + gamesDest);
          log("mc-upgrader will upgrade the fabric loader, all mods and shaders");
          log("Execute upgrade.sh or upgrade.bat");
-         showExitButton();
 
+         log("Install complete.");
       } catch (IOException e) {
          log("Installation failed: " + e.getMessage());
          e.printStackTrace();
@@ -173,8 +182,9 @@ public class InstallerMain {
    }
 
    private static Path locateMinecraft() {
-      Path devPath = Paths.get("..", "minecraft").toAbsolutePath().normalize();
+      Path devPath = Paths.get("sandbox").toAbsolutePath().normalize();
       if (Files.isDirectory(devPath)) {
+         devPath = devPath.resolve("minecraft");
          log("Using local sandbox Minecraft directory: " + devPath);
          return devPath;
       }
@@ -197,6 +207,7 @@ public class InstallerMain {
    }
 
    private static void copyRecursive(Path src, Path dest) throws IOException {
+      if (src == null) throw new IOException("Source path is null");
       boolean isUnix = System.getProperty("os.name").toLowerCase(Locale.ROOT).matches(".*(nix|nux|mac).*");
 
       if (!Files.exists(dest)) {
@@ -219,5 +230,45 @@ public class InstallerMain {
             throw new UncheckedIOException(e);
          }
       });
+   }
+
+
+   private static Path extractResourceDirectory(String resourceRoot) throws IOException, URISyntaxException {
+      URL resourceURL = InstallerMain.class.getResource(resourceRoot);
+      if (resourceURL == null) throw new IOException("Resource not found: " + resourceRoot);
+
+      if ("file".equals(resourceURL.getProtocol())) {
+         // Dev mode: just copy from filesystem path
+         Path resourcePath = Paths.get(resourceURL.toURI());
+         log("Using raw filesystem path: " + resourcePath);
+         return resourcePath;
+      }
+
+      if ("jar".equals(resourceURL.getProtocol())) {
+         // Packaged mode: extract from inside JAR
+         Path tempDir = Files.createTempDirectory("installer_resources");
+         URI raw = InstallerMain.class.getProtectionDomain().getCodeSource().getLocation().toURI();
+         URI jarUri = new URI("jar", raw.toString(), null);
+         log("Using packages resource path: " + jarUri);
+         try (FileSystem fs = FileSystems.newFileSystem(jarUri, new java.util.HashMap<>())) {
+            Path jarPath = fs.getPath(resourceRoot);
+            Files.walk(jarPath).forEach(source -> {
+               try {
+                  Path target = tempDir.resolve(jarPath.relativize(source).toString());
+                  if (Files.isDirectory(source)) {
+                     Files.createDirectories(target);
+                  } else {
+                     Files.createDirectories(target.getParent());
+                     Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+                  }
+               } catch (IOException e) {
+                  throw new UncheckedIOException(e);
+               }
+            });
+         }
+         return tempDir;
+      }
+
+      throw new IOException("Unsupported resource protocol: " + resourceURL.getProtocol());
    }
 }

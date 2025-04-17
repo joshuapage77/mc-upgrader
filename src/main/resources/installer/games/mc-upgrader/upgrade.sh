@@ -17,4 +17,4 @@ fi
 echo "[INFO] Using Java: $JAVA_PATH"
 "$JAVA_PATH" -version
 
-"$JAVA_PATH" -jar mc-upgrader.jar "$@"
+"$JAVA_PATH" -jar mc-upgrader.jar --java-path "$JAVA_PATH" "$@"

@@ -39,28 +39,36 @@ best_version=0
 best_path=""
 
 for runtime_dir in "$runtime_base_dir"/java-runtime-*; do
-   [[ -d "$runtime_dir" ]] || continue
+      log "checking: $runtime_dir"
+      if [ ! -d "$runtime_dir" ]; then
+         continue
+      fi
 
-   os_subdir=$(find "$runtime_dir" -mindepth 1 -maxdepth 1 -type d | head -n1)
-   [[ -d "$os_subdir" ]] || continue
+      log "searching for jpackage under $runtime_dir"
+      jpackage_path=$(find "$runtime_dir" -type f -name "jpackage" 2>/dev/null | head -n1)
+      if [ -z "$jpackage_path" ]; then
+         continue
+      fi
 
-   java_home=$(find "$os_subdir" -type d -name "java-runtime-*" | head -n1)
-   java_bin="$java_home/bin/java"
+      java_bin=$(dirname "$jpackage_path")/java
+      if [ ! -x "$java_bin" ]; then
+         continue
+      fi
 
-   [[ -x "$java_bin" ]] || continue
+      version_str=$("$java_bin" -version 2>&1 | grep 'version' | awk '{print $3}' | tr -d '"')
+      major=$(echo "$version_str" | cut -d. -f1 | sed 's/^1$//')
+      echo "$major" | grep -Eq '^[0-9]+$'
+      if [ $? -ne 0 ]; then
+         continue
+      fi
 
-   version_str=$("$java_bin" -version 2>&1 | grep 'version' | awk '{print $3}' | tr -d '"')
-   major=$(echo "$version_str" | cut -d. -f1 | sed 's/^1$//') # handle Java 1.8 style
+      log "Found Java $major at $java_bin"
 
-   [[ "$major" =~ ^[0-9]+$ ]] || continue
-
-   log "Found Java $major at $java_home"
-
-   if (( major > best_version )); then
-      best_version=$major
-      best_path="$java_bin"
-   fi
-done
+      if [ "$major" -gt "$best_version" ]; then
+         best_version=$major
+         best_path=$java_bin
+      fi
+   done
 
 [[ -n "$best_path" ]] || err "No valid Java runtimes found."
 

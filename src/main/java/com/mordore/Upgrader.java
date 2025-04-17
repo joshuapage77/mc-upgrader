@@ -4,6 +4,7 @@ import com.mordore.config.Config;
 import com.mordore.mods.Mod;
 import com.mordore.mods.ModrinthArtifactProvider;
 import com.mordore.pojo.ModVersion;
+import com.mordore.Utils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,13 +50,31 @@ public class Upgrader {
 
          log.debug("Verbose mode enabled");
       }
+      Config config = Config.getInstance();
+
+      if (opts.minecraftPath != null) {
+         log.debug("Minecraft path passed in: {}", opts.minecraftPath);
+         config.setMinecraft(opts.minecraftPath);
+      } else {
+         if (config.getMinecraft() == null) {
+            log.error("Minecraft location not configured");
+            Path minecraftPath = Utils.findMinecraftDirectory();
+            if (minecraftPath != null) {
+               log.info("Found minecraft at: {}", minecraftPath);
+               config.setMinecraft(minecraftPath.toString());
+            }
+         }
+      }
+
+      if (opts.javaPath != null) {
+         log.info("Java path passed in: {}", opts.javaPath);
+         config.setJava(Path.of(opts.javaPath));
+      }
 
       if (opts.specificVersion != null) {
          opts.rangeStart = opts.specificVersion;
          opts.rangeEnd = opts.specificVersion;
       }
-
-      Config config = Config.getInstance();
 
       for (Config.GameConfig game : config.getGames()) {
          if (opts.game != null && !game.name.equalsIgnoreCase(opts.game)) continue;

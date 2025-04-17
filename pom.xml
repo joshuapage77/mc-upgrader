@@ -66,6 +66,7 @@
 
    <build>
       <plugins>
+
          <!-- Compiler config -->
          <plugin>
             <groupId>org.apache.maven.plugins</groupId>
@@ -76,18 +77,29 @@
             </configuration>
          </plugin>
 
-         <!-- Shade plugin to build fat JAR -->
+         <!-- Shade plugin to build both jars and copy installer content -->
          <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-shade-plugin</artifactId>
             <version>3.5.0</version>
             <executions>
+
+               <!-- 1. Build mc-upgrader.jar -->
                <execution>
+                  <id>shade-upgrader</id>
                   <phase>package</phase>
                   <goals><goal>shade</goal></goals>
                   <configuration>
-                     <createDependencyReducedPom>false</createDependencyReducedPom>
                      <finalName>mc-upgrader</finalName>
+                     <createDependencyReducedPom>false</createDependencyReducedPom>
+                     <filters>
+                        <filter>
+                           <artifact>*:*</artifact>
+                           <excludes>
+                              <exclude>installer/**</exclude>
+                           </excludes>
+                        </filter>
+                     </filters>
                      <transformers>
                         <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                            <mainClass>com.mordore.Upgrader</mainClass>
@@ -95,10 +107,48 @@
                      </transformers>
                   </configuration>
                </execution>
+
+               <!-- 2. Copy mc-upgrader.jar into installer resources -->
+               <execution>
+                  <id>copy-upgrader-into-resources</id>
+                  <phase>package</phase>
+                  <goals><goal>shade</goal></goals>
+                  <configuration>
+                     <shadedArtifactAttached>false</shadedArtifactAttached>
+                     <artifactSet>
+                        <includes>
+                           <include>nothing:nothing</include>
+                        </includes>
+                     </artifactSet>
+                     <relocations/>
+                     <transformers>
+                        <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
+                           <resource>installer/games/mc-upgrader/mc-upgrader.jar</resource>
+                           <file>target/mc-upgrader.jar</file>
+                        </transformer>
+                     </transformers>
+                  </configuration>
+               </execution>
+
+               <!-- 3. Build tyberian-installer.jar -->
+               <execution>
+                  <id>shade-installer</id>
+                  <phase>package</phase>
+                  <goals><goal>shade</goal></goals>
+                  <configuration>
+                     <finalName>tyberian-installer</finalName>
+                     <transformers>
+                        <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                           <mainClass>com.mordore.install.InstallerMain</mainClass>
+                        </transformer>
+                     </transformers>
+                  </configuration>
+               </execution>
+
             </executions>
          </plugin>
 
-         <!-- Ant plugin to copy scripts and package everything -->
+         <!-- Ant plugin to build mc-upgrader folder, zip it -->
          <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-antrun-plugin</artifactId>
@@ -107,6 +157,7 @@
                <execution>
                   <id>build-distribution</id>
                   <phase>package</phase>
+                  <goals><goal>run</goal></goals>
                   <configuration>
                      <target>
                         <mkdir dir="target/mc-upgrader"/>
@@ -114,20 +165,19 @@
                         <copy todir="target/mc-upgrader">
                            <fileset dir="src/main/scripts"/>
                         </copy>
-
                         <chmod perm="755">
                            <fileset dir="target/mc-upgrader" includes="**/*.sh"/>
                         </chmod>
                         <zip destfile="target/mc-upgrader.zip" basedir="target/mc-upgrader"/>
                      </target>
                   </configuration>
-                  <goals>
-                     <goal>run</goal>
-                  </goals>
                </execution>
             </executions>
          </plugin>
+
       </plugins>
    </build>
+
+
 
 </project>
