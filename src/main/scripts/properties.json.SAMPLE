@@ -1,9 +1,0 @@
-{
-   "minecraft": "../../",
-   "games": [
-      {
-         "name": "MY_GAME_NAME",
-         "path": "../MyGame"
-      }
-   ]
-}

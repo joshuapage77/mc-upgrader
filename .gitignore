@@ -1,14 +1,16 @@
 # Java build output
 /build/
 /.gradle/
-/.vscode/
-/.idea/
 /target/
 /*.log
-/devnotes.md
+dependency-reduced-pom.xml
 
-# Ignore all JARs
-*.jar
+# IDE Stuff
+/.vscode/
+/.idea/
+
+# My Stuff
+/devnotes.md
 
 # Ignore everything under sandbox
 /sandbox/**
@@ -18,4 +20,4 @@
 !/sandbox/gameDir/config/mods.json
 
 !/sandbox/minecraft/
-!/sandbox/minecraft/launcher_profiles.json
+!/sandbox/minecraft/launcher_profiles.json.SAMPLE

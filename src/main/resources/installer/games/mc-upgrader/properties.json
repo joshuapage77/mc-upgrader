@@ -1,0 +1,9 @@
+{
+   "minecraft": "../../",
+   "games": [
+      {
+         "name": "DomainOfPages",
+         "path": "../tyberian25565"
+      }
+   ]
+}

@@ -2,11 +2,14 @@ package com.mordore;
 
 import java.io.IOException;
 import java.util.List;
+import com.mordore.config.Config;
 
 public class FabricInstaller {
+   private final static Config config = Config.getInstance();
    public static void installFabric(String installerJar, String mcDir, String mcVersion, String loaderVersion) throws IOException, InterruptedException {
+      String javaStr = config.getJava().toString();
       List<String> command = List.of(
-            "java", "-jar", installerJar,
+            javaStr, "-jar", installerJar,
             "client",
             "-dir", mcDir,
             "-mcversion", mcVersion,

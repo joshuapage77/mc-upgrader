@@ -25,6 +25,14 @@ public class CliOptions {
    @Option(names = {"--range-end"}, description = "Force upgrade/downgrade to specific Minecraft version range")
    public String rangeEnd;
 
+   @Option(names = {"--minecraft-path"}, description = "Explicit minecraft path")
+   public String minecraftPath;
+
+   @Option(names = {"--java-path"}, description = "Prevent upgrader from having to search for java")
+   public String javaPath;
+
    @Parameters(arity = "0..1", description = "Optional game name to upgrade (default: all)")
    public String game;
+
+
 }

@@ -1,0 +1,39 @@
+[
+   {
+      "slug": "fabric-api",
+      "loader": "fabric",
+      "type": "mod",
+      "releaseArtifacts": "modrinth",
+      "snapshotArtifacts": "modrinth"
+   },
+   {
+      "slug": "worldedit-cui",
+      "loader": "fabric",
+      "optional": true,
+      "useSnapshot": true,
+      "type": "mod",
+      "releaseArtifacts": "modrinth",
+      "snapshotArtifacts": "enginehub"
+   },
+   {
+      "slug": "sodium",
+      "loader": "fabric",
+      "type": "mod",
+      "releaseArtifacts": "modrinth",
+      "snapshotArtifacts": "modrinth"
+   },
+   {
+      "slug": "iris",
+      "loader": "fabric",
+      "type": "mod",
+      "releaseArtifacts": "modrinth",
+      "snapshotArtifacts": "modrinth"
+   },
+   {
+      "slug": "complementary-unbound",
+      "loader": "iris",
+      "type": "shader",
+      "releaseArtifacts": "modrinth",
+      "snapshotArtifacts": "modrinth"
+   }
+]

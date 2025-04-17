@@ -10,13 +10,13 @@ Upgrades or downgrades:
 * shader versions
 Determines (based on mod optionality and command line parameters) the highest version supported by required mods
 
+### 1. Java Runtime Discovery
+Auto-detects the newest available Minecraft-bundled Java runtime (cross-platform) to launch the upgrader.
+
 ### 1. Mod Compatibility Resolution
 Reads a list of mods (`mods.json`) with required/optional flags and determines:
 - ✅ Highest Minecraft version compatible with **all** mods
 - ✅ Highest Minecraft version compatible with **required** mods only
-
-### 2. Java Runtime Discovery
-Auto-detects the newest available Minecraft-bundled Java runtime (cross-platform) to launch the upgrader.
 
 ### 3. Mod Upgrade Automation
 Automates the upgrade process by fetching compatible mod versions and updating client `mods/` folders, according to a central configuration (`properties.json`).
