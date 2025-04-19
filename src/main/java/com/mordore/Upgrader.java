@@ -80,7 +80,7 @@ public class Upgrader {
          if (opts.game != null && !game.name.equalsIgnoreCase(opts.game)) continue;
          log.info("Checking game: {} at path: {}", game.name, game.getPath());
 
-         String fabricGameVersion = LauncherProfiles.findCurrentVersion(config.getMinecraft(), game.getPath());
+         String fabricGameVersion = LauncherProfiles.findCurrentVersion(Path.of(config.getMinecraft()), Path.of(game.getPath()));
          String minecraftGameVersion = extractMinecraftVersion(fabricGameVersion);
 
          String gameRangeStart = (opts.rangeStart != null) ? opts.rangeStart : minecraftGameVersion;
@@ -137,8 +137,8 @@ public class Upgrader {
             continue;
          }
          log.info("{}ing {} to {}", versionChangeString.substring(0, versionChangeString.length() - 1), game.name, selectedVersion);
-         String newFabricInstallId = upgradeFabricVersion(config.getMinecraft(), selectedVersion);
-         LauncherProfiles.updateVersion(config.getMinecraft(), game.getPath(), newFabricInstallId);
+         String newFabricInstallId = upgradeFabricVersion(Path.of(config.getMinecraft()), selectedVersion);
+         LauncherProfiles.updateVersion(Path.of(config.getMinecraft()), Path.of(game.getPath()), newFabricInstallId);
 
          updateMods(mods, selectedVersion, game.getPath());
          log.info("All changes complete");
@@ -183,7 +183,7 @@ public class Upgrader {
       return fabricVersionId.substring(lastDash + 1);
    }
 
-   public static String upgradeFabricVersion(String minecraftDir, String mcVersion) {
+   public static String upgradeFabricVersion(Path minecraftDir, String mcVersion) {
       try {
          String loaderVersion = fetchLatestVersionFromMaven("fabric-loader");
          String installerVersion = fetchLatestVersionFromMaven("fabric-installer");
@@ -191,7 +191,7 @@ public class Upgrader {
          log.info("Installing Fabric version - Loader: {} Installer: {}", loaderVersion, installerVersion);
 
          String versionFolderName = String.format("fabric-loader-%s-%s", loaderVersion, mcVersion);
-         Path versionPath = Paths.get(minecraftDir, "versions", versionFolderName);
+         Path versionPath = minecraftDir.resolve("versions").resolve(versionFolderName);
 
          if (Files.exists(versionPath)) {
             log.info("Fabric version {} already installed. Skipping installation.", versionFolderName);

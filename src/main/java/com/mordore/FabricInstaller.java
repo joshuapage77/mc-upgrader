@@ -1,17 +1,18 @@
 package com.mordore;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import com.mordore.config.Config;
 
 public class FabricInstaller {
    private final static Config config = Config.getInstance();
-   public static void installFabric(String installerJar, String mcDir, String mcVersion, String loaderVersion) throws IOException, InterruptedException {
+   public static void installFabric(String installerJar, Path mcDir, String mcVersion, String loaderVersion) throws IOException, InterruptedException {
       String javaStr = config.getJava().toString();
       List<String> command = List.of(
             javaStr, "-jar", installerJar,
             "client",
-            "-dir", mcDir,
+            "-dir", mcDir.toString(),
             "-mcversion", mcVersion,
             "-loader", loaderVersion
       );

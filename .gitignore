@@ -1,7 +1,7 @@
 # Java build output
 /build/
 /.gradle/
-/target/
+/maven/**/target/*
 /*.log
 dependency-reduced-pom.xml
 

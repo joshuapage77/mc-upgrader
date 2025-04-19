@@ -11,12 +11,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Properties;
 
 public class Config {
    private String minecraft;
    private final List<GameConfig> games;
    private Path java;
    private static final Logger log = LoggerFactory.getLogger(Config.class);
+   private final String version;
 
    private Config() {
       ObjectMapper mapper = new ObjectMapper();
@@ -36,7 +38,22 @@ public class Config {
       } catch (IOException e) {
          throw new RuntimeException(e);
       }
+      Properties gitProps = new Properties();
+      String ver = "unknown";
+      try (var in = Config.class.getResourceAsStream("/git.properties")) {
+         if (in != null) {
+            gitProps.load(in);
+            String majMin = gitProps.getProperty("git.build.version", "unknown");
+            String commitCount = gitProps.getProperty("git.total.commit.count", "unknown");
+            ver = majMin + "." + commitCount;
+         }
+      } catch (IOException e) {
+         log.warn("Unable to load git.properties", e);
+      }
+      this.version = ver;
+
    }
+   public String getVersion() { return version; }
 
    public void setMinecraft (String mcPath) {
       this.minecraft = mcPath;

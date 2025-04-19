@@ -40,21 +40,21 @@ public class LauncherProfilesTest {
    @Test
    void resolvesAbsolutePathUnchanged(@TempDir Path tempDir) {
       Path absolutePath = tempDir.resolve("games/testgame").toAbsolutePath().normalize();
-      Path result = LauncherProfilesTestHarness.resolveGameDir(absolutePath.toString(), tempDir.toString());
+      Path result = LauncherProfilesTestHarness.resolveGameDir(absolutePath.toString(), tempDir);
       assertEquals(absolutePath, result);
    }
 
    @Test
    void resolvesRelativePathAgainstMinecraftDir(@TempDir Path tempDir) {
       Path expected = tempDir.resolve("games/testgame").toAbsolutePath().normalize();
-      Path result = LauncherProfilesTestHarness.resolveGameDir("games/testgame", tempDir.toString());
+      Path result = LauncherProfilesTestHarness.resolveGameDir("games/testgame", tempDir);
       assertEquals(expected, result);
    }
 
    @Test
    public void findsVersionForAbsolutePath() {
       Path gameDir = tempDir.resolve("games/testgame");
-      String version = LauncherProfiles.findCurrentVersion(tempDir.toString(), gameDir.toString());
+      String version = LauncherProfiles.findCurrentVersion(tempDir, gameDir);
       assertEquals("version-1", version);
    }
 
@@ -67,14 +67,14 @@ public class LauncherProfilesTest {
    @Test
    public void returnsNullForMissingProfile() {
       Path missingDir = tempDir.resolve("nonexistent");
-      String version = LauncherProfiles.findCurrentVersion(tempDir.toString(), missingDir.toString());
+      String version = LauncherProfiles.findCurrentVersion(tempDir, missingDir);
       assertNull(version);
    }
 
    @Test
    public void updatesVersionIfMatch() throws IOException {
       Path gameDir = tempDir.resolve("games/testgame");
-      boolean updated = LauncherProfiles.updateVersion(tempDir.toString(), gameDir.toString(), "new-version");
+      boolean updated = LauncherProfiles.updateVersion(tempDir, gameDir, "new-version");
       assertTrue(updated);
       String updatedJson = Files.readString(launcherProfilesPath);
       assertTrue(updatedJson.contains("new-version"));
@@ -83,7 +83,7 @@ public class LauncherProfilesTest {
    @Test
    public void doesNotUpdateIfNoMatch() throws IOException {
       Path gameDir = tempDir.resolve("games/unknown");
-      boolean updated = LauncherProfiles.updateVersion(tempDir.toString(), gameDir.toString(), "new-version");
+      boolean updated = LauncherProfiles.updateVersion(tempDir, gameDir, "new-version");
       assertFalse(updated);
       String json = Files.readString(launcherProfilesPath);
       assertFalse(json.contains("new-version"));
@@ -91,7 +91,7 @@ public class LauncherProfilesTest {
 
    // Internal test harness to expose private method
    static class LauncherProfilesTestHarness extends LauncherProfiles {
-      public static Path resolveGameDir(String gameDirPath, String minecraftDir) {
+      public static Path resolveGameDir(String gameDirPath, Path minecraftDir) {
          return LauncherProfiles.resolveGameDir(gameDirPath, minecraftDir);
       }
    }
