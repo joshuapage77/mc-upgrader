@@ -1,6 +1,7 @@
 package com.mordore.config;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mordore.Utils;
 import org.slf4j.Logger;
@@ -10,6 +11,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
@@ -22,22 +24,32 @@ public class Config {
 
    private Config() {
       ObjectMapper mapper = new ObjectMapper();
+      mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
       PropertiesConfig config = null;
       try {
+         Path properties = Path.of("properties.json");
+
          config = mapper.readValue(
-               Files.readString(Paths.get("properties.json")),
+               Files.readString(properties),
                PropertiesConfig.class
          );
       } catch (IOException e) {
-         throw new RuntimeException(e);
+         log.warn("properties.json not found");
       }
-      this.games = config.games;
-      this.minecraft = Utils.expandPath(config.minecraft);
+      if (config == null) {
+         this.minecraft = String.valueOf(Utils.findMinecraftDirectory());
+         this.games = new ArrayList<>();
+      } else {
+         this.minecraft = config.minecraft;
+         this.games = config.games;
+      }
+
       try {
          this.java = Utils.findJavaExecutable(this.minecraft);
       } catch (IOException e) {
          throw new RuntimeException(e);
       }
+
       Properties gitProps = new Properties();
       String ver = "unknown";
       try (var in = Config.class.getResourceAsStream("/git.properties")) {
@@ -100,6 +112,7 @@ public class Config {
 
    static class PropertiesConfig {
       public String minecraft;
+      public String java;
       public List<GameConfig> games;
    }
 }

@@ -17,12 +17,14 @@ LAUNCH4J_HOME=tools/launch4j
 echo "LAUNCH4J_HOME: $LAUNCH4J_HOME"
 set -e
 
-JAR="target/tyberian-installer.jar"
+JAR="tyberian-installer.jar"
 INSTALLER="distributions/tyberian-installer.sh"
 MAIN_CLASS="com.mordore.install.InstallerMain"
 APP_NAME="tyberian-installer"
-OUTPUT_DIR="target/dist"
-ICON="src/main/resources"
+TARGET="maven/installer/target"
+DIST="dist"
+OUTPUT_DIR="$TARGET/$DIST"
+ICON="maven/installer/target/classes/game-icon.png"
 JRE="distributions/jre-swing"
 
 ALL_TYPES=("linux" "mac" "mac_command" "win")
@@ -74,25 +76,25 @@ for TYPE in "${TYPES[@]}"; do
 
   case "$TYPE" in
     linux)
-      cat $INSTALLER $JAR > $OUTPUT_DIR/${APP_NAME}.run
+      cat $INSTALLER $TARGET/$JAR > $OUTPUT_DIR/${APP_NAME}.run
       chmod +x $OUTPUT_DIR/${APP_NAME}.run
       ;;
     mac_command)
-      cat $INSTALLER $JAR > $OUTPUT_DIR/${APP_NAME}.command
+      cat $INSTALLER $TARGET/$JAR > $OUTPUT_DIR/${APP_NAME}.command
       chmod +x $OUTPUT_DIR/${APP_NAME}.command
       ;;
     mac)
       if [[ "$(uname)" == "Darwin" ]]; then
         bash distributions/create_mac_app_dmg.sh \
           --name "$APP_NAME" \
-          --jar "$(basename "$JAR")" \
+          --jar "$(basename "$TARGET/$JAR")" \
           --class "$MAIN_CLASS" \
           --icon "$ICON" \
           --dest "$OUTPUT_DIR"
       else
         bash distributions/create_mac_app_zip.sh \
           --name "$APP_NAME" \
-          --jar "$(basename "$JAR")" \
+          --jar "$(basename "$TARGET/$JAR")" \
           --class "$MAIN_CLASS" \
           --icon "$ICON" \
           --dest "$OUTPUT_DIR"
@@ -101,7 +103,7 @@ for TYPE in "${TYPES[@]}"; do
     win)
       bash distributions/create_win_exe.sh \
         --jar "$JAR" \
-        --exe "$OUTPUT_DIR/${APP_NAME}.exe" \
+        --exe "$DIST/${APP_NAME}.exe" \
         --icon "$ICON" \
         --launch4j "$LAUNCH4J_HOME"
       WIN_RESULT="${APP_NAME}_win"

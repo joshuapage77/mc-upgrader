@@ -13,9 +13,13 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
 import com.mordore.pojo.InstallSettings;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Utils {
    private static final ObjectMapper mapper = new ObjectMapper();
+   private static final Logger log = LoggerFactory.getLogger(Utils.class);
+
    static {
       mapper.registerModule(new JavaTimeModule());
    }
@@ -41,18 +45,22 @@ public class Utils {
          return devPath;
       }
       String userHome = System.getProperty("user.home");
+      log.debug("User home: {}", userHome);
 
       if (isWindows()) {
          String appData = System.getenv("APPDATA");
          if (appData != null) {
             Path mcPath = Paths.get(appData, ".minecraft");
+            log.debug("Searching Windows location for minecraft: {}", mcPath);
             if (Files.isDirectory(mcPath)) return mcPath;
          }
       } else if (isMac()) {
          Path mcPath = Paths.get(userHome, "Library", "Application Support", "minecraft");
+         log.debug("Searching Mac location for minecraft: {}", mcPath);
          if (Files.isDirectory(mcPath)) return mcPath;
       } else {
          Path mcPath = Paths.get(userHome, ".minecraft");
+         log.debug("Searching Linux location for minecraft: {}", mcPath);
          if (Files.isDirectory(mcPath)) return mcPath;
       }
 
@@ -86,12 +94,16 @@ public class Utils {
                .toList();
          if (!javaPaths.isEmpty()) return javaPaths.getFirst().toAbsolutePath();
       } else {
+         log.debug("Searching for java-runtime-delta in path {}", minecraftPath);
          Path runtimeDelta = findFolder(minecraftPath, "java-runtime-delta", null, true);
+         log.debug("Found Folder: {}", runtimeDelta);
          Path java = findFile(runtimeDelta, List.of("java"));
+         log.debug("Found File: {}", java);
          if (java != null) return java.toAbsolutePath();
       }
 
       // Fallback: JAVA_HOME
+      log.debug("Looking for JAVA_HOME environment variable");
       String javaHome = System.getenv("JAVA_HOME");
       if (javaHome != null) {
          Path javaPath = Paths.get(javaHome, "bin", isWindows() ? "java.exe" : "java");
@@ -99,6 +111,7 @@ public class Utils {
       }
 
       // Fallback: system PATH
+      log.debug("Looking for java in the path");
       Process p = new ProcessBuilder(isWindows() ? "where" : "which", "java").start();
       try (BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
          String result = reader.readLine();
@@ -111,7 +124,7 @@ public class Utils {
    public static Path findFile(Path searchPath, List<String> targetNames) throws IOException {
       if (searchPath == null || targetNames == null || targetNames.isEmpty()) return null;
 
-      try (Stream<Path> paths = Files.walk(searchPath.resolve("runtime"))) {
+      try (Stream<Path> paths = Files.walk(searchPath)) {
          return paths
                .filter(Files::isRegularFile)
                .filter(p -> targetNames.contains(p.getFileName().toString()))
@@ -125,6 +138,7 @@ public class Utils {
       if (searchPath == null || !Files.isDirectory(searchPath)) return null;
 
       Stream<Path> paths = recursive ? Files.walk(searchPath) : Files.list(searchPath);
+
       try (paths) {
          return paths
                .filter(Files::isDirectory)
@@ -227,7 +241,7 @@ public class Utils {
       try (InputStream is = Utils.class.getClassLoader().getResourceAsStream(resourceName)) {
          if (is == null) {
             if ("icon.png".equals(resourceName)) throw new FileNotFoundException("Resource not found: " + resourceName);
-            return getBase64ForIcon(resourceName);
+            return getBase64ForIcon("icon.png");
          }
          byte[] bytes = is.readAllBytes();
          return "data:image/png;base64," + Base64.getEncoder().encodeToString(bytes);
@@ -238,7 +252,6 @@ public class Utils {
       try {
          URL stream = Utils.class.getClassLoader().getResource(resourceName);
          if (stream == null) {
-            System.out.println("Fuck you!");
             stream = Utils.class.getClassLoader().getResource("Wumpus.png");
             if (stream == null) throw new RuntimeException("Neither primary nor fallback icon found");
          }
@@ -269,5 +282,20 @@ public class Utils {
       }
    }
 
+   public static InputStream getResource(String resourceName) {
+      try {
+         if (!isJar()) {
+            Path resource = Path.of("sandbox/gameConfig").resolve(resourceName);
+            return Files.newInputStream(resource);
+         }
+         return Utils.class.getClassLoader().getResourceAsStream(resourceName);
+      } catch (Exception e) {
+         throw new RuntimeException("Failed to resource: " + resourceName, e);
+      }
+   }
+
+   public static boolean isJar () {
+      return Utils.class.getResource("Utils.class").toString().startsWith("jar:");
+   }
 
 }

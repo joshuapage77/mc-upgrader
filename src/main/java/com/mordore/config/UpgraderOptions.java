@@ -1,9 +1,9 @@
-package com.mordore;
+package com.mordore.config;
 
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
-public class CliOptions {
+public class UpgraderOptions {
    @Option(names = {"-h", "--help"}, usageHelp = true, description = "Show this help message")
    public boolean help;
 

@@ -18,10 +18,11 @@ chmod +x "$LAUNCH4J_HOME/bin/"*
 
 # Add local bin dir to PATH
 export PATH="$LAUNCH4J_HOME/bin:$PATH"
-convert $ICON/icon.png target/classes/icon.ico
+# TODO: don't hardcodepath
+convert $ICON maven/installer/target/classes/icon.ico
 
 # Create temporary config.xml
-CONFIG="target/launch4j-config.xml"
+CONFIG="maven/installer/target/launch4j-config.xml"
 
 cat > "$CONFIG" <<EOF
 <launch4jConfig>

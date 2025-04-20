@@ -8,7 +8,11 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mordore.LauncherProfiles;
 import com.mordore.Utils;
 import com.mordore.config.Config;
+import com.mordore.config.InstallerOptions;
 import com.mordore.pojo.InstallSettings;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import picocli.CommandLine;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -25,7 +29,7 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 public class InstallerMain {
-
+   private static final Logger log = LoggerFactory.getLogger(InstallerMain.class);
    private static JTextArea logArea;
    private static JFrame frame;
    private static JLabel minecraftPathValue;
@@ -37,6 +41,27 @@ public class InstallerMain {
    private static JPanel buttonPanel;
 
    public static void main(String[] args) {
+      InstallerOptions opts = new InstallerOptions();
+      CommandLine cmd = new CommandLine(opts);
+      try {
+         cmd.parseArgs(args);
+      } catch (Exception e) {
+         System.out.println(e.getMessage());
+         opts.help = true;
+      }
+
+      if (opts.help) {
+         cmd.usage(System.out);
+         return;
+      }
+
+      if (opts.verbose) {
+         ch.qos.logback.classic.Logger root =
+               (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+         root.setLevel(ch.qos.logback.classic.Level.DEBUG);
+
+         log.debug("Verbose mode enabled");
+      }
       SwingUtilities.invokeLater(() -> createAndShowGUI(args));
    }
 
@@ -69,7 +94,8 @@ public class InstallerMain {
 
       final InstallSettings installSettings = new InstallSettings();
       ObjectMapper mapper = new ObjectMapper();
-      try (InputStream is = Utils.class.getClassLoader().getResourceAsStream("game.json")) {
+
+      try (InputStream is = Utils.getResource("game.json")) {
          if (is == null) throw new RuntimeException("game.json not found");
          JsonNode root = mapper.readTree(is);
          installSettings.setGameName(root.get("name").asText());
@@ -79,7 +105,11 @@ public class InstallerMain {
       String abortReason = "";
 
       try {
-         updateInstallPaths(installSettings);
+         if (Config.getInstance().getMinecraft() == null) throw new RuntimeException("Minecraft path could not be determined");
+         installSettings.setMinecraftPath(Path.of(Config.getInstance().getMinecraft()));
+         if (Config.getInstance().getJava() == null) throw new RuntimeException("Java path could not be determined");
+         installSettings.setJavaPath(Config.getInstance().getJava());
+         installSettings.setGamesPath(installSettings.getMinecraftPath().resolve("games"));
       } catch (RuntimeException re) {
          abortReason = re.getMessage();
       }
@@ -229,6 +259,7 @@ public class InstallerMain {
             try {
                runInstall(installSettings);
             } catch (IOException | URISyntaxException ex) {
+               uiLog(ex.getMessage());
                throw new RuntimeException(ex);
             } finally {
                showExitButton();
@@ -251,30 +282,16 @@ public class InstallerMain {
       frame.setLocationRelativeTo(null);
 
       if (!abortReason.isEmpty()) {
-         log(abortReason);
+         uiLog(abortReason);
          showExitButton();
       } else {
          updateInstallPathLabels(installSettings);
          if (Utils.pathContainsSegment(installSettings.getMinecraftPath(), "sandbox")) {
-            log("-- Using Sandbox minecraft --");
+            uiLog("-- Using Sandbox minecraft --");
          }
       }
 
       frame.setVisible(true);
-   }
-
-   private static void updateInstallPaths (InstallSettings settings) {
-      try {
-         settings.setMinecraftPath(Utils.findMinecraftDirectory());
-         Path javaPath = Utils.findJavaExecutable(settings.getMinecraftPath());
-         if (javaPath == null) throw new RuntimeException("Java path could not be determined");
-         settings.setJavaPath(javaPath);
-         settings.setGamesPath(settings.getMinecraftPath().resolve("games"));
-         settings.setGameName("Domain of Pages");
-         System.out.println(settings);
-      } catch (IOException e) {
-         throw new RuntimeException(e);
-      }
    }
 
    private static void showExitButton() {
@@ -289,70 +306,72 @@ public class InstallerMain {
    }
 
    private static void runInstall(InstallSettings settings) throws IOException, URISyntaxException {
+      log.debug("Current directory: {}", System.getProperty("user.dir"));
+
       Path gameSrc = extractResourceDirectory("/copy");
       if (!Files.exists(gameSrc) || !Files.isDirectory(gameSrc)) {
-         log("Error: Source folder " + gameSrc + " not found.");
+         uiLog("Error: Source folder " + gameSrc + " not found.");
          return;
       }
 
       Path mcupgraderSrc = extractResourceDirectory("/installer/mc-upgrader");
       if (!Files.exists(mcupgraderSrc) || !Files.isDirectory(mcupgraderSrc)) {
-         log("Error: Source folder " + mcupgraderSrc + " not found.");
-         cleanupTempFolder(gameSrc, "/copy");
+         uiLog("Error: Source folder " + mcupgraderSrc + " not found.");
+         cleanupTempFolder(gameSrc);
          return;
       }
 
       try {
-         log("Creating game folder");
+         uiLog("Creating game folder");
          Files.createDirectories(settings.getGameFolderPath());
-         log("Installing game content");
+         uiLog("Installing game content");
          copyRecursive(gameSrc, settings.getGameFolderPath());
-         log("Installing mc-upgrader");
-         Path upgrader = settings.getGameFolderPath().resolve("mc-upgrader");
+         uiLog("Installing mc-upgrader");
+         Path upgrader = settings.getGamesPath().resolve("mc-upgrader");
          copyRecursive(mcupgraderSrc, upgrader);
-         log("generating properties.json");
+         uiLog("generating properties.json");
          generateProperties(settings, upgrader);
          Path optionsSrc = settings.getMinecraftPath().resolve("options.txt");
-         Path optionsDest = settings.getGamesPath().resolve("options.txt");
+         Path optionsDest = settings.getGameFolderPath().resolve("options.txt");
          if (Files.exists(optionsSrc)) {
             Files.copy(optionsSrc, optionsDest, StandardCopyOption.REPLACE_EXISTING);
-            log("Copied options.txt");
+            uiLog("Copied options.txt");
          } else {
-            log("Warning: options.txt not found, skipping.");
+            uiLog("Warning: options.txt not found, skipping.");
          }
 
          Path configSrc = settings.getMinecraftPath().resolve("config");
-         Path configDest = settings.getGamesPath().resolve("config");
+         Path configDest = settings.getGameFolderPath().resolve("config");
          if (Files.exists(configSrc)) {
             copyRecursive(configSrc, configDest);
-            log("Copied config files.");
+            uiLog("Copied config files.");
          } else {
-            log("Warning: config directory not found, skipping.");
+            uiLog("Warning: config directory not found, skipping.");
          }
 
-         log("Backing up launcher_profiles.json");
+         uiLog("Backing up launcher_profiles.json");
          LauncherProfiles.backup(settings.getMinecraftPath());
-         log("Adding new installation profile to launcher_profiles.json");
+         uiLog("Adding new installation profile to launcher_profiles.json");
          LauncherProfiles.addInstallation(settings, "fabric-loader-0.16.13-1.21.5");
          if (Utils.isWindows()) {
-            log("Creating user registry key for Java location");
+            uiLog("Creating user registry key for Java location");
             Utils.createRegistryKey("Software\\MyApp", "JavaPath", settings.getJavaPath().toString());
          }
-         log("Waba-laba-dub-dub!");
-         log("Install complete.");
-         log("");
-         log("The new folder that holds game directories and mc-upgrader is:");
-         log("    " + settings.getGameFolder());
-         log("mc-upgrader will upgrade the fabric loader, all mods and shaders");
-         log("Execute upgrade.sh or upgrade.bat");
+         uiLog("Waba-laba-dub-dub!");
+         uiLog("Install complete.");
+         uiLog("");
+         uiLog("The new folder that holds game directories and mc-upgrader is:");
+         uiLog("    " + settings.getGameFolder());
+         uiLog("mc-upgrader will upgrade the fabric loader, all mods and shaders");
+         uiLog("Execute upgrade.sh or upgrade.bat");
 
-         log("Install complete.");
+         uiLog("Install complete.");
       } catch (Exception e) {
-         log("Installation failed: " + e.getMessage());
+         uiLog("Installation failed: " + e.getMessage());
          e.printStackTrace();
       } finally {
-         cleanupTempFolder(gameSrc, "/copy");
-         cleanupTempFolder(mcupgraderSrc, "/installer/mc-upgrader");
+         cleanupTempFolder(gameSrc);
+         cleanupTempFolder(mcupgraderSrc);
       }
    }
 
@@ -378,14 +397,17 @@ public class InstallerMain {
             root.put("java", settings.getJavaPath().toString());
          }
 
+         root.put("version", Config.getInstance().getVersion());
+
          ArrayNode gamesNode = (ArrayNode) root.withArray("games");
          boolean found = false;
          for (JsonNode gameNode : gamesNode) {
             if (gameNode.has("name") && settings.getGameName().equals(gameNode.get("name").asText())) {
                ObjectNode gameObj = (ObjectNode) gameNode;
                String currentPath = gameObj.has("path") ? gameObj.get("path").asText() : null;
-               if (!settings.getGameFolder().equals(currentPath)) {
-                  gameObj.put("path", settings.getGameFolder());
+               if (!settings.getGameFolderPath().equals(currentPath)) {
+                  log.debug("Updating existing game path: {}", settings.getGameFolderPath().toString());
+                  gameObj.put("path", settings.getGameFolderPath().toString());
                }
                found = true;
                break;
@@ -395,7 +417,7 @@ public class InstallerMain {
          if (!found) {
             ObjectNode newGame = mapper.createObjectNode();
             newGame.put("name", settings.getGameName());
-            newGame.put("path", settings.getGameFolder());
+            newGame.put("path", settings.getGameFolderPath().toString());
             gamesNode.add(newGame);
          }
 
@@ -413,33 +435,8 @@ public class InstallerMain {
       SwingUtilities.invokeLater(() -> javaPathValue.setText(installSettings.getJavaPath().toString()));
    }
 
-   private static void log(String message) {
+   private static void uiLog(String message) {
       SwingUtilities.invokeLater(() -> logArea.append(LocalDateTime.now() + ": " + message + "\n"));
-   }
-
-   private static Path locateMinecraft() {
-      Path devPath = Paths.get("sandbox").toAbsolutePath().normalize();
-      if (Files.isDirectory(devPath)) {
-         devPath = devPath.resolve("minecraftPath");
-         log("Using local sandbox Minecraft directory: " + devPath);
-         return devPath;
-      }
-
-      String os = System.getProperty("os.name").toLowerCase(Locale.ROOT);
-      String home = System.getProperty("user.home");
-
-      if (os.contains("win")) {
-         String appData = System.getenv("APPDATA");
-         if (appData != null) {
-            return Paths.get(appData, ".minecraftPath");
-         }
-      } else if (os.contains("mac")) {
-         return Paths.get(home, "Library", "Application Support", "minecraft");
-      } else if (os.contains("nix") || os.contains("nux")) {
-         return Paths.get(home, ".minecraft");
-      }
-
-      return null;
    }
 
    private static void copyRecursive(Path src, Path dest) throws IOException {
@@ -468,30 +465,20 @@ public class InstallerMain {
       });
    }
 
-   private static void cleanupTempFolder(Path tempFolder, String resourceRoot) {
-      URL resourceURL = InstallerMain.class.getResource(resourceRoot);
-      if ("jar".equals(resourceURL.getProtocol())) {
-         Utils.deleteDirectory(tempFolder);
-      }
+   private static void cleanupTempFolder(Path tempFolder) {
+      if (!Utils.isJar()) return;
+      Utils.deleteDirectory(tempFolder);
    }
 
    private static Path extractResourceDirectory(String resourceRoot) throws IOException, URISyntaxException {
-      URL resourceURL = InstallerMain.class.getResource(resourceRoot);
-      if (resourceURL == null) throw new IOException("Resource not found: " + resourceRoot);
-
-      if ("file".equals(resourceURL.getProtocol())) {
-         // Dev mode: just copy from filesystem path
-         Path resourcePath = Paths.get(resourceURL.toURI());
-         log("Using raw filesystem path: " + resourcePath);
-         return resourcePath;
-      }
-
-      if ("jar".equals(resourceURL.getProtocol())) {
+      if (Utils.isJar()) {
+         URL resourceURL = InstallerMain.class.getResource(resourceRoot);
+         if (resourceURL == null) throw new IOException("Resource not found: " + resourceRoot);
          // Packaged mode: extract from inside JAR
          Path tempDir = Files.createTempDirectory("installer_resources");
          URI raw = InstallerMain.class.getProtectionDomain().getCodeSource().getLocation().toURI();
          URI jarUri = new URI("jar", raw.toString(), null);
-         log("Using packages resource path: " + jarUri);
+         uiLog("Using packages resource path: " + jarUri);
          try (FileSystem fs = FileSystems.newFileSystem(jarUri, new java.util.HashMap<>())) {
             Path jarPath = fs.getPath(resourceRoot);
             Files.walk(jarPath).forEach(source -> {
@@ -509,8 +496,14 @@ public class InstallerMain {
             });
          }
          return tempDir;
+      } else {
+         URL resourceURL = Path.of("maven/installer/target/classes").resolve(resourceRoot.substring(1)).toUri().toURL();
+         log.debug("ResourceURL: {}", resourceURL);
+         if (resourceURL == null) throw new IOException("Resource not found: " + resourceRoot);
+         // Dev mode: just copy from filesystem path
+         Path resourcePath = Paths.get(resourceURL.toURI());
+         uiLog("Using raw filesystem path: " + resourcePath);
+         return resourcePath;
       }
-
-      throw new IOException("Unsupported resource protocol: " + resourceURL.getProtocol());
    }
 }

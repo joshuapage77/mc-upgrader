@@ -48,8 +48,9 @@ if [ -z "$APP_NAME" ] || [ -z "$OUTPUT_PATH" ] || [ -z "$MAIN_JAR" ] || [ -z "$M
    show_help
 fi
 
+# TODO: should not hard code locations, pass them in
 # --- Constants ---
-INPUT_PATH=target/jpackage-input
+INPUT_PATH=maven/installer/target/jpackage-input
 
 # --- Clean output ---
 APP_DIR="$OUTPUT_PATH/$APP_NAME"
@@ -57,7 +58,7 @@ rm -rf "$APP_DIR" "$APP_DIR.app"
 
 rm -rf $INPUT_PATH
 mkdir $INPUT_PATH
-cp target/$MAIN_JAR $INPUT_PATH
+cp maven/installer/target/$MAIN_JAR $INPUT_PATH
 
 # --- Run jpackage ---
 log "Packaging $APP_NAME..."

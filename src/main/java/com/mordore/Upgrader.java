@@ -1,10 +1,10 @@
 package com.mordore;
 
 import com.mordore.config.Config;
+import com.mordore.config.UpgraderOptions;
 import com.mordore.mods.Mod;
 import com.mordore.mods.ModrinthArtifactProvider;
 import com.mordore.pojo.ModVersion;
-import com.mordore.Utils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,19 +22,18 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import com.mordore.config.ModConfig;
 
 public class Upgrader {
    private static final Logger log = LoggerFactory.getLogger(Upgrader.class);
 
    public static void main(String[] args) throws IOException, InterruptedException {
-      CliOptions opts = new CliOptions();
+      UpgraderOptions opts = new UpgraderOptions();
       CommandLine cmd = new CommandLine(opts);
 
       try {
          cmd.parseArgs(args);
       } catch (Exception e) {
-         System.out.println(e.getMessage());
+         log.error(e.getMessage());
          opts.help = true;
       }
 
@@ -75,7 +74,7 @@ public class Upgrader {
          opts.rangeStart = opts.specificVersion;
          opts.rangeEnd = opts.specificVersion;
       }
-
+      log.debug("games defined: {}", config.getGames().isEmpty());
       for (Config.GameConfig game : config.getGames()) {
          if (opts.game != null && !game.name.equalsIgnoreCase(opts.game)) continue;
          log.info("Checking game: {} at path: {}", game.name, game.getPath());
@@ -95,7 +94,7 @@ public class Upgrader {
          List<String> validVersions = resolveVersions(mods, searchVersions, !opts.requiredOnly);
 
          if (validVersions.isEmpty()) {
-            log.error("Targed minecraft versions [{}, {}] not available for all{} mods", gameRangeStart, opts.rangeEnd == null ? "latest" : opts.rangeEnd, opts.requiredOnly ? " required" : "");
+            log.error("Targeted minecraft versions [{}, {}] not available for all{} mods", gameRangeStart, opts.rangeEnd == null ? "latest" : opts.rangeEnd, opts.requiredOnly ? " required" : "");
             log.error("Aborting");
             continue;
          }

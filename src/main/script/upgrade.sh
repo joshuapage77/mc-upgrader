@@ -1,20 +1,21 @@
 #!/usr/bin/env bash
 set -e
 
-ENV_FILE=".env"
+PROPERTIES_FILE="properties.json"
 
-if [[ -f "$ENV_FILE" ]]; then
-   source "$ENV_FILE"
-else
-   JAVA_PATH=$(./find_latest_java.sh -q) || {
-      echo "[ERROR] Failed to detect Java runtime"
-      exit 1
-   }
-   echo "JAVA_PATH=$JAVA_PATH" > "$ENV_FILE"
-   echo "[INFO] Created .env with JAVA_PATH=$JAVA_PATH"
+if [[ ! -f "$PROPERTIES_FILE" ]]; then
+   echo "[ERROR] Missing properties.json"
+   exit 1
+fi
+
+JAVA_PATH=$(jq -r '.java' "$PROPERTIES_FILE")
+
+if [[ -z "$JAVA_PATH" || "$JAVA_PATH" == "null" ]]; then
+   echo "[ERROR] Java path not found in properties.json"
+   exit 1
 fi
 
 echo "[INFO] Using Java: $JAVA_PATH"
 "$JAVA_PATH" -version
 
-"$JAVA_PATH" -jar mc-upgrader.jar --java-path "$JAVA_PATH" "$@"
+"$JAVA_PATH" -jar mc-upgrader.jar "$@"
