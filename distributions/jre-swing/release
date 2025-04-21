@@ -1,2 +1,2 @@
 JAVA_VERSION="21"
-MODULES="java.base java.datatransfer java.xml java.prefs java.desktop"
+MODULES="java.base java.datatransfer java.xml java.prefs java.desktop java.logging java.security.sasl java.naming"

@@ -355,7 +355,14 @@ public class InstallerMain {
          LauncherProfiles.addInstallation(settings, "fabric-loader-0.16.13-1.21.5");
          if (Utils.isWindows()) {
             uiLog("Creating user registry key for Java location");
-            Utils.createRegistryKey("Software\\MyApp", "JavaPath", settings.getJavaPath().toString());
+            Utils.createRegistryKey("Software\\TyberianInstaller", "JavaPath", settings.getJavaPath().toString());
+            Path source = Path.of("mc-upgrader.exe");
+            if (!Files.exists(source)) {
+               throw new RuntimeException("mc-upgrader.exe is missing from install package");
+            }
+            Files.copy(source, settings.getGamesPath().resolve("mc-upgrader"));
+            Files.deleteIfExists(settings.getGamesPath().resolve("mc-upgrader").resolve("mc-upgrader.jar"));
+            Files.deleteIfExists(settings.getGamesPath().resolve("mc-upgrader").resolve("upgrader.sh"));
          }
          uiLog("Waba-laba-dub-dub!");
          uiLog("Install complete.");

@@ -75,7 +75,10 @@ public class Utils {
          String localAppData = System.getenv("LOCALAPPDATA");
          // On my windows machine, minecraftPath embedded java was installed to:
          // %LOCALAPPDATA%\Microsoft.4297127D64EC6_8wekyb3d8bbwe\LocalCache\Local\runtime\java-runtime-delta\windows-x64\java-runtime-delta\bin\javaw.exe
-         List<Path> javaPaths = findFolders(Path.of(localAppData), "Microsoft.", null, false).stream()
+         //List<Path> javaPaths = findFolders(Path.of(localAppData), "Microsoft.", null, false);
+
+
+         List<Path> javaPaths = findFolders(Path.of(localAppData).resolve("Packages"), "Microsoft.", null, false).stream()
                .flatMap(microsoftPath -> {
                   try {
                      return findFolders(microsoftPath, "java-runtime-delta", null, true).stream();
@@ -199,7 +202,7 @@ public class Utils {
 
       if (os.contains("win")) {
          try {
-            createRegistryKey("Software\\MyApp", "InstallSettings", settings.getJsonString());
+            createRegistryKey("Software\\TyberianInstaller", "InstallSettings", settings.getJsonString());
          } catch (Exception e) {
             throw new RuntimeException("Failed to write to Windows registry", e);
          }

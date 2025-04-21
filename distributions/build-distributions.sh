@@ -119,11 +119,12 @@ for TYPE in "${TYPES[@]}"; do
         --icon "$UPGRADE_ICON" \
         --launch4j "$LAUNCH4J_HOME" \
         --target "$TARGET_UPGRADE" \
-        --jre "jre-swing"
+        --jre "%HKEY_CURRENT_USER\Software\TyberianInstaller\JavaPath%"
 
       WIN_RESULT="${APP_NAME}_win"
       mkdir "$OUTPUT_DIR/$WIN_RESULT"
       mv "$OUTPUT_DIR/${APP_NAME}.exe" "$OUTPUT_DIR/$WIN_RESULT"
+      mv "$TARGET_UPGRADE/$DIST/mc-upgrader.exe" "$OUTPUT_DIR/$WIN_RESULT"
       cp -r $JRE "$OUTPUT_DIR/$WIN_RESULT"
       zip -r "$OUTPUT_DIR/${WIN_RESULT}.zip" "$OUTPUT_DIR/$WIN_RESULT/"
       rm -rf "$OUTPUT_DIR/$WIN_RESULT"
