@@ -18,13 +18,16 @@ echo "LAUNCH4J_HOME: $LAUNCH4J_HOME"
 set -e
 
 JAR="tyberian-installer.jar"
+UPGRADE_JAR="mc-upgrader.jar"
 INSTALLER="distributions/tyberian-installer.sh"
 MAIN_CLASS="com.mordore.install.InstallerMain"
 APP_NAME="tyberian-installer"
-TARGET="maven/installer/target"
+TARGET_INSTALL="maven/installer/target"
+TARGET_UPGRADE="maven/upgrader/target"
 DIST="dist"
-OUTPUT_DIR="$TARGET/$DIST"
+OUTPUT_DIR="$TARGET_INSTALL/$DIST"
 ICON="maven/installer/target/classes/game-icon.png"
+UPGRADE_ICON="maven/upgrader/target/classes/icon.png"
 JRE="distributions/jre-swing"
 
 ALL_TYPES=("linux" "mac" "mac_command" "win")
@@ -101,16 +104,28 @@ for TYPE in "${TYPES[@]}"; do
       fi
       ;;
     win)
+      mkdir -p "$TARGET_UPGRADE/$DIST"
       bash distributions/create_win_exe.sh \
         --jar "$JAR" \
         --exe "$DIST/${APP_NAME}.exe" \
         --icon "$ICON" \
-        --launch4j "$LAUNCH4J_HOME"
+        --launch4j "$LAUNCH4J_HOME" \
+        --target "$TARGET_INSTALL" \
+        --jre "jre-swing"
+
+      bash distributions/create_win_exe.sh \
+        --jar "$UPGRADE_JAR" \
+        --exe "$DIST/mc-upgrader.exe" \
+        --icon "$UPGRADE_ICON" \
+        --launch4j "$LAUNCH4J_HOME" \
+        --target "$TARGET_UPGRADE" \
+        --jre "jre-swing"
+
       WIN_RESULT="${APP_NAME}_win"
       mkdir "$OUTPUT_DIR/$WIN_RESULT"
       mv "$OUTPUT_DIR/${APP_NAME}.exe" "$OUTPUT_DIR/$WIN_RESULT"
       cp -r $JRE "$OUTPUT_DIR/$WIN_RESULT"
-      zip -r "$OUTPUT_DIR/${WIN_RESULT}.zip" "$OUTPUT_DIR/$WIN_RESULT"
+      zip -r "$OUTPUT_DIR/${WIN_RESULT}.zip" "$OUTPUT_DIR/$WIN_RESULT/"
       rm -rf "$OUTPUT_DIR/$WIN_RESULT"
       ;;
     *)
